@@ -40,7 +40,7 @@ Responsibility: Philipp Waltermann
   - `game_config.py`: Core game settings and parameters
 - `dummy_agents/`: AI agents with different behaviors
   - `stupid_agent.py`: Random movement agent
-  - `spinning_agent.py`: Wall-following agent
+  - `spinning_agent.py`: Random spinning and moving agent
 
 - `main.py`: Game initialization and main loop
 
