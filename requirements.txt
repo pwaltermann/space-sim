@@ -1,0 +1,11 @@
+# Core dependencies
+pygame==2.5.2
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+python-multipart==0.0.9
+
+# Additional dependencies
+requests==2.31.0  # For agent API calls
+python-dotenv==1.0.0  # For environment variables
+typing-extensions==4.9.0  # For type hints 
