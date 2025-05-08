@@ -226,8 +226,8 @@ class GameState:
             
         return True
         
-    def get_state(self) -> Dict:
-        """Get current game state."""
+    def get_player_state(self) -> Dict:
+        """Get the current state of all players."""
         return {
             'players': {pid: {
                 'position': [p.position.x, p.position.y],
@@ -235,10 +235,54 @@ class GameState:
                 'lifes': p.lifes,
                 'shield_active': p.shield_active,
                 'shield_available': p.shield_available,
-                'active': p.active
-            } for pid, p in self.players.items()},
-            'walls': [[wall.x, wall.y] for wall in self.walls],
-            'mines': [[mine.position.x, mine.position.y] for mine in self.mines],
-            'lasers': [[laser.position.x, laser.position.y] for laser in self.lasers],
-            'game_over': self.game_over
-        } 
+                'active': p.active,
+                'name': p.name
+            } for pid, p in self.players.items()}
+        }
+
+    def get_environment_state(self) -> Dict:
+        """Get the current state of the game environment."""
+        # Get positions relative to each player and only within 5 block radius
+        environment_states = {}
+        for player_id, player in self.players.items():
+            walls_relative = []
+            mines_relative = []
+            lasers_relative = []
+            
+            # Calculate relative positions for walls within radius
+            for wall in self.walls:
+                dx = wall.x - player.position.x
+                dy = wall.y - player.position.y
+                if abs(dx) <= 5 and abs(dy) <= 5:
+                    walls_relative.append([dx, dy])
+                    
+            # Calculate relative positions for mines within radius    
+            for mine in self.mines:
+                dx = mine.position.x - player.position.x
+                dy = mine.position.y - player.position.y
+                if abs(dx) <= 5 and abs(dy) <= 5:
+                    mines_relative.append([dx, dy])
+                    
+            # Calculate relative positions for lasers within radius
+            for laser in self.lasers:
+                dx = laser.position.x - player.position.x
+                dy = laser.position.y - player.position.y
+                if abs(dx) <= 5 and abs(dy) <= 5:
+                    lasers_relative.append([dx, dy])
+                    
+            environment_states[player_id] = {
+                'walls': walls_relative,
+                'mines': mines_relative, 
+                'lasers': lasers_relative,
+                'game_over': self.game_over
+            }
+            
+        return environment_states
+
+    def get_state(self) -> Dict:
+        """Get the complete game state combining player and environment state.
+        This method is maintained for backward compatibility with existing agents."""
+        return {
+            **self.get_player_state(),
+            **self.get_environment_state()
+        }
