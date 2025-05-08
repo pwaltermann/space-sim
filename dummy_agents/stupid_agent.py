@@ -13,6 +13,8 @@ API_BASE_URL = "http://127.0.0.1:8000"
 MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
 FIRE_INTERVAL = 2  # seconds
+RATE_LIMIT_DELAY = 0.6  # seconds to wait after rate limit (slightly more than 0.5 to ensure we're under limit)
+MOVE_DELAY = 0.1  # seconds between moves (reduced from 0.5 to make it faster than spinning agent)
 
 class GameAgent:
     """Simple agent that follows walls and fires periodically."""
@@ -22,113 +24,124 @@ class GameAgent:
         self.base_url = base_url
         self.player_id = "stupid"
         self.name = "Stupid"  # Changed to "Stupid"
-        self.last_action_time = 0
-        self.action_delay = 0.1  # Minimum time between actions
+        self.last_move_time = 0
         self.last_fire_time = 0
         self.current_direction = "right"  # Start moving right
+        self.last_request_time = 0  # Track last request time for rate limiting
+        
+    def _make_request(self, method: str, endpoint: str, json_data: dict = None, retry: bool = True) -> Optional[dict]:
+        """Make an API request with rate limit handling and retries."""
+        current_time = time.time()
+        time_since_last_request = current_time - self.last_request_time
+        
+        # If less than 0.5 seconds since last request, wait
+        if time_since_last_request < 0.5:
+            time.sleep(0.5 - time_since_last_request)
+            
+        for attempt in range(MAX_RETRIES):
+            try:
+                if method == "GET":
+                    response = requests.get(f"{self.base_url}/{endpoint}")
+                else:
+                    response = requests.post(f"{self.base_url}/{endpoint}", json=json_data)
+                    
+                response.raise_for_status()
+                self.last_request_time = time.time()
+                return response.json()
+                
+            except RequestException as e:
+                if response.status_code == 429 and retry:  # Rate limit exceeded
+                    print(f"Rate limit exceeded, waiting {RATE_LIMIT_DELAY} seconds...")
+                    time.sleep(RATE_LIMIT_DELAY)
+                    continue
+                print(f"Request failed: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_DELAY)
+                return None
+                
+        return None
         
     def register(self) -> bool:
         """Register the agent with the game server."""
-        try:
-            response = requests.post(
-                f"{self.base_url}/register",
-                json={"player_id": self.player_id, "name": self.name}
-            )
-            response.raise_for_status()
+        response = self._make_request("POST", "register", {"player_id": self.player_id, "name": self.name})
+        if response:
             print(f"Registered with ID: {self.player_id}")
             return True
-        except requests.RequestException as e:
-            print(f"Failed to register: {e}")
-            return False
+        return False
             
     def unregister(self) -> bool:
         """Unregister the agent from the game server."""
         if not self.player_id:
             return True
             
-        try:
-            response = requests.post(f"{API_BASE_URL}/unregister", json={"player_id": self.player_id})
-            response.raise_for_status()
+        response = self._make_request("POST", "unregister", {"player_id": self.player_id})
+        if response:
             print("Unregistered successfully")
             return True
-        except requests.RequestException as e:
-            print(f"Failed to unregister: {e}")
-            return False
+        return False
             
     def get_state(self) -> Optional[Dict]:
         """Get the current game state."""
-        try:
-            response = requests.get(f"{API_BASE_URL}/state")
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Failed to get state: {e}")
+        # Get player state
+        player_state = self._make_request("GET", "player_state")
+        if not player_state:
             return None
+            
+        # Get environment state
+        env_state = self._make_request("GET", "environment_state")
+        if not env_state:
+            return None
+            
+        # Combine states
+        return {
+            "players": player_state["players"],
+            "environment": env_state.get(self.player_id, {})
+        }
             
     def move(self, direction: str) -> bool:
         """Move the agent in the specified direction."""
         if not self.player_id:
             return False
             
-        try:
-            response = requests.post(
-                f"{API_BASE_URL}/move",
-                json={"player_id": self.player_id, "direction": direction}
-            )
-            response.raise_for_status()
-            return True
-        except requests.RequestException as e:
-            print(f"Failed to move: {e}")
+        current_time = time.time()
+        if current_time - self.last_move_time < MOVE_DELAY:
             return False
+            
+        response = self._make_request("POST", "move", {"player_id": self.player_id, "direction": direction})
+        if response:
+            self.last_move_time = current_time
+            return True
+        return False
             
     def rotate(self, direction: str) -> bool:
         """Rotate the agent by the specified direction."""
         if not self.player_id:
             return False
             
-        try:
-            response = requests.post(
-                f"{API_BASE_URL}/rotate",
-                json={"player_id": self.player_id, "direction": direction}
-            )
-            response.raise_for_status()
-            return True
-        except requests.RequestException as e:
-            print(f"Failed to rotate: {e}")
-            return False
+        response = self._make_request("POST", "rotate", {"player_id": self.player_id, "direction": direction})
+        return response is not None
             
     def fire(self) -> bool:
         """Fire a laser."""
         if not self.player_id:
             return False
             
-        try:
-            response = requests.post(
-                f"{API_BASE_URL}/fire",
-                json={"player_id": self.player_id}
-            )
-            response.raise_for_status()
-            return True
-        except requests.RequestException as e:
-            print(f"Failed to fire: {e}")
+        current_time = time.time()
+        if current_time - self.last_fire_time < FIRE_INTERVAL:
             return False
+            
+        response = self._make_request("POST", "fire", {"player_id": self.player_id})
+        if response:
+            self.last_fire_time = current_time
+            return True
+        return False
             
     def step(self) -> bool:
         """Execute one step of the agent's behavior."""
-        state = self.get_state()
-        if not state:
-            return False
-            
-        # Get current player state
-        player_state = state["players"].get(self.player_id)
-        if not player_state:
-            return False
-            
         # Check if we need to fire
         current_time = time.time()
         if current_time - self.last_fire_time >= FIRE_INTERVAL:
             self.fire()
-            self.last_fire_time = current_time
             
         # Try to move in current direction
         if not self.move(self.current_direction):

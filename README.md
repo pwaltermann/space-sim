@@ -98,6 +98,15 @@ python dummy_agents/spinning_agent.py
 
 ## API Documentation
 
+### Rate Limiting
+
+The API implements rate limiting to ensure fair play and prevent server overload:
+- Each player is limited to 5 requests per second
+- This limit applies to all endpoints (GET and POST requests)
+- If the rate limit is exceeded, the API will return a 429 (Too Many Requests) error
+- The rate limit is tracked per player_id
+- Rate limiting applies to all game actions (move, rotate, fire, shield) and state requests
+
 ### Endpoints
 
 #### Register Player
@@ -121,8 +130,8 @@ python dummy_agents/spinning_agent.py
   ```
 - **Response**: Game state object
 
-#### Get Game State
-- **GET** `/state`
+#### Get Player State
+- **GET** `/player_state`
 - **Response**:
   ```json
   {
@@ -132,12 +141,21 @@ python dummy_agents/spinning_agent.py
         "rotation": number,
         "lifes": number,
         "shield_active": boolean,
-        "active": boolean
+        "active": boolean,
+        "name": "string"
       }
-    },
-    "walls": [[x, y], ...],
-    "mines": [[x, y], ...],
-    "lasers": [[x, y], ...],
+    }
+  }
+  ```
+
+#### Get Environment State  
+- **GET** `/environment_state`
+- **Response**:
+  ```json
+  {
+    "walls": [[x, y], ...],    // Positions relative to player, only within 5 block radius
+    "mines": [[x, y], ...],    // Positions relative to player, only within 5 block radius  
+    "lasers": [[x, y], ...],   // Positions relative to player, only within 5 block radius
     "game_over": boolean
   }
   ```
