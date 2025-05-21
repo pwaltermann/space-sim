@@ -47,11 +47,16 @@ class SpinningAgent:
                 self.last_request_time = time.time()
                 return response.json()
                 
-            except RequestException as e:
-                if response.status_code == 429 and retry:  # Rate limit exceeded
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429 and retry:  # Rate limit exceeded
                     print(f"Rate limit exceeded, waiting {RATE_LIMIT_DELAY} seconds...")
                     time.sleep(RATE_LIMIT_DELAY)
                     continue
+                print(f"HTTP error: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_DELAY)
+                return None
+            except RequestException as e:
                 print(f"Request failed: {e}")
                 if attempt < MAX_RETRIES - 1:
                     time.sleep(RETRY_DELAY)
