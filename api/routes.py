@@ -68,7 +68,9 @@ def create_app(game_state: GameState) -> FastAPI:
             # Add current timestamp
             request_timestamps[player_id].append(current_time)
             
-        return await call_next(request)
+        # Get the response from the next middleware/route handler
+        response = await call_next(request)
+        return response
 
     @app.post("/register")
     async def register_player(request: RegisterRequest) -> Dict:
@@ -82,11 +84,6 @@ def create_app(game_state: GameState) -> FastAPI:
         """Unregister a player."""
         game_state.remove_player(request.player_id)
         return {"success": True, "state": game_state.get_state()}
-
-    @app.get("/state")
-    async def get_state() -> Dict:
-        """Get the complete game state (maintained for backward compatibility)."""
-        return game_state.get_state()
 
     @app.get("/player_state")
     async def get_player_state() -> Dict:
