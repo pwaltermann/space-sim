@@ -50,9 +50,9 @@ class GameState:
         # Define spawn positions around the center
         spawn_positions = [
             (center_x, center_y),      # Center
-            (center_x + 1, center_y),  # Right of center
-            (center_x - 1, center_y),  # Left of center
-            (center_x, center_y + 1)   # Below center
+            (center_x + 3, center_y),  # Right of center
+            (center_x - 3, center_y),  # Left of center
+            (center_x, center_y + 3)   # Below center
         ]
         
         # Find first available spawn position
