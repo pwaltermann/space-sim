@@ -10,7 +10,6 @@ from collections import defaultdict
 
 # Rate limiting configuration
 RATE_LIMIT = 5  # requests per second
-RATE_WINDOW = 1.0  # time window in seconds
 
 class MoveRequest(BaseModel):
     player_id: str

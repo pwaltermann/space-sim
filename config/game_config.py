@@ -26,7 +26,7 @@ GRAY = (128, 128, 128)
 FPS = 60
 SHIELD_DURATION = 3.0  # seconds
 FLASH_DURATION = 0.5  # seconds
-INITIAL_LIFES = 10
+INITIAL_LIFES = 5
 
 # Movement settings
 LASER_SPEED = 10.0  # blocks per second
