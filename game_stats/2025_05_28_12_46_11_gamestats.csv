@@ -1,0 +1,2 @@
+player_id,seconds_survived,laser_hits,lives_lost,is_last_surviving
+stupid,0.0,0,0,True

@@ -1,0 +1,3 @@
+player_id,seconds_survived,laser_hits,lives_lost,is_last_surviving
+spinnin,5.01,2,0,True
+stupid,4.11,0,2,False

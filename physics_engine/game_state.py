@@ -4,8 +4,10 @@ Game state module for managing the game state and logic.
 from typing import Dict, List, Optional, Tuple
 import time
 import math
+import sys
 from physics_engine.position import Position
 from physics_engine.physics import PhysicsEngine
+from physics_engine.player_stats import GameStats
 from config.game_config import (
     SCREEN_WIDTH, SCREEN_HEIGHT, CELL_SIZE,
     SHIELD_DURATION, INITIAL_LIFES, LASER_SPEED,
@@ -25,6 +27,11 @@ class GameState:
         self.players: Dict[str, Spaceship] = {}
         self.is_flashing = False
         self.flash_start_time = 0
+        self.stats = GameStats()  # Initialize statistics
+        self.game_start_time = None  # Track when the game actually starts
+        self.GAME_START_DELAY = 5.0  # 5 seconds delay before game over checks begin
+        self.game_over_time = None  # Track when game over was triggered
+        self.SHUTDOWN_DELAY = 2.0  # 2 seconds delay before shutdown
         self.reset()
         
     def reset(self):
@@ -37,6 +44,9 @@ class GameState:
         self.players.clear()
         self.is_flashing = False
         self.flash_start_time = 0
+        self.stats = GameStats()  # Reset statistics
+        self.game_start_time = None  # Reset game start time
+        self.game_over_time = None  # Reset game over time
         
     def add_player(self, player_id: str, name: str = None) -> bool:
         """Add a new player to the game."""
@@ -81,6 +91,12 @@ class GameState:
             player.name = f"Player {player_count}"
             
         self.players[player_id] = player
+        self.stats.add_player(player_id)  # Add player to statistics tracking
+        
+        # Set game start time when first player joins
+        if self.game_start_time is None:
+            self.game_start_time = time.time()
+            
         return True
         
     def remove_player(self, player_id: str) -> bool:
@@ -93,6 +109,10 @@ class GameState:
     def update(self, dt: float):
         """Update game state."""
         if self.game_over:
+            # Check if it's time to shut down
+            if self.game_over_time is not None and time.time() - self.game_over_time >= self.SHUTDOWN_DELAY:
+                print("Shutting down game...")
+                sys.exit(0)  # Exit the program
             return
             
         # Update lasers
@@ -118,10 +138,29 @@ class GameState:
                     laser.active = False
                     break
                     
-        # Update players
+        # Update players and their statistics
+        active_players = 0
+        last_active_player = None
         for player in self.players.values():
             if player.shield_active and time.time() - player.shield_start_time > SHIELD_DURATION:
                 player.shield_active = False
+            if player.active:
+                active_players += 1
+                last_active_player = player
+            self.stats.update_stats(player.id, player.active)
+        
+        # Check if game is over (only one player left or no players)
+        # Only check after the game start delay has passed
+        current_time = time.time()
+        if (self.game_start_time is not None and 
+            current_time - self.game_start_time >= self.GAME_START_DELAY and
+            len(self.players) > 0 and active_players <= 1):
+            self.game_over = True
+            self.game_over_time = current_time  # Record when game over was triggered
+            if last_active_player:
+                self.stats.set_last_surviving(last_active_player.id)
+            self.stats.export_stats()  # Export statistics when game ends
+            print("Game Over! Statistics have been exported.")
         
         # Update flash effect
         if self.is_flashing and time.time() - self.flash_start_time > FLASH_DURATION:
@@ -141,6 +180,7 @@ class GameState:
                 if self.physics_engine.check_mine_collision(player.position, mine.position):
                     if not player.shield_active:
                         player.lifes -= 3  # Lose 3 lifes when hitting a mine
+                        self.stats.record_life_lost(player.id)  # Record life lost
                         if player.lifes <= 0:
                             player.active = False
                         self.is_flashing = True
@@ -155,6 +195,8 @@ class GameState:
                     self.physics_engine.check_laser_collision(laser.position, player.position)):
                     if not player.shield_active:
                         player.lifes -= 1  # Lose 1 life when hit by laser
+                        self.stats.record_life_lost(player.id)  # Record life lost
+                        self.stats.record_laser_hit(laser.owner_id)  # Record successful hit
                         if player.lifes <= 0:
                             player.active = False
                         self.is_flashing = True

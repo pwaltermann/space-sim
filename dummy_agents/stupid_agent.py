@@ -50,7 +50,8 @@ class GameAgent:
                 return response.json()
                 
             except RequestException as e:
-                if response.status_code == 429 and retry:  # Rate limit exceeded
+                # Check if we have a response object and if it's a rate limit error
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429 and retry:
                     print(f"Rate limit exceeded, waiting {RATE_LIMIT_DELAY} seconds...")
                     time.sleep(RATE_LIMIT_DELAY)
                     continue
