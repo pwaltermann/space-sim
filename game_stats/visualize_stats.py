@@ -10,7 +10,7 @@ import glob
 def calculate_scores(df):
     """Calculate scores for each player based on the scoring system."""
     # Calculate points for each category
-    df['survival_points'] = (df['seconds_survived'] // 5) * 1  # +1 point per 5 seconds
+    df['survival_points'] = (df['seconds_survived'])//3 * 1  # +1 point per 3 seconds
     df['laser_hit_points'] = df['laser_hits'] * 5  # +5 points per laser hit
     df['life_lost_penalty'] = df['lives_lost'] * -5  # -5 points per life lost
     df['last_survivor_bonus'] = df['is_last_surviving'].astype(int) * 25  # +25 points if last surviving

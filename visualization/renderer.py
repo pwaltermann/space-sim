@@ -3,6 +3,7 @@ Renderer module for handling all visualization aspects of the game.
 """
 import pygame
 import os
+import time
 from typing import List, Dict, Tuple
 from physics_engine.position import Position
 from physics_engine.game_state import GameState
@@ -166,6 +167,17 @@ class GameRenderer:
         flash_surface.fill((*RED, 128))  # Red with 50% transparency
         self.screen.blit(flash_surface, (0, 0))
 
+    def _get_remaining_time(self) -> str:
+        """Calculate and format the remaining game time."""
+        if self.game_state.game_start_time is None:
+            return "2:00"
+            
+        elapsed_time = time.time() - self.game_state.game_start_time
+        remaining_time = max(0, self.game_state.GAME_TIME_LIMIT - elapsed_time)
+        minutes = int(remaining_time // 60)
+        seconds = int(remaining_time % 60)
+        return f"{minutes}:{seconds:02d}"
+
     def _render_ui(self):
         """Render the UI elements."""
         # Draw black background for score area
@@ -199,18 +211,15 @@ class GameRenderer:
                 UI_CIRCLE_RADIUS
             )
             
-            # Draw player name and lifes text vertically centered
-            name_y = (CELL_SIZE - name_text.get_height()) // 2
-            lifes_y = (CELL_SIZE - lifes_text.get_height()) // 2
-            
-            # Draw player name
-            self.screen.blit(name_text, (x_offset + UI_CIRCLE_RADIUS * 2 + 5, name_y))
-            
-            # Draw lifes text
-            self.screen.blit(lifes_text, (x_offset + UI_CIRCLE_RADIUS * 2 + name_text.get_width() + 10, lifes_y))
-            
-            # Update x offset for next player
+            # Draw player name and lifes
+            self.screen.blit(name_text, (x_offset + UI_CIRCLE_RADIUS * 2 + 10, 5))
+            self.screen.blit(lifes_text, (x_offset + UI_CIRCLE_RADIUS * 2 + name_text.get_width() + 20, 5))
             x_offset += width
+            
+        # Draw time counter in top right corner
+        time_text = self.font.render(self._get_remaining_time(), True, WHITE)
+        time_x = SCREEN_WIDTH - time_text.get_width() - 20  # 20 pixels padding from right edge
+        self.screen.blit(time_text, (time_x, 5))
 
         # Draw game over message
         if self.game_state.game_over:

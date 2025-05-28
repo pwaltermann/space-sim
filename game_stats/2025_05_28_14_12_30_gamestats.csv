@@ -1,0 +1,4 @@
+player_id,seconds_survived,laser_hits,lives_lost,is_last_surviving
+rotator,25.48,0,2,False
+spinnin,53.29,4,0,True
+stupid,52.77,0,2,False

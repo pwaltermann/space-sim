@@ -30,6 +30,7 @@ class GameState:
         self.stats = GameStats()  # Initialize statistics
         self.game_start_time = None  # Track when the game actually starts
         self.GAME_START_DELAY = 5.0  # 5 seconds delay before game over checks begin
+        self.GAME_TIME_LIMIT = 120.0  # 2 minutes time limit
         self.game_over_time = None  # Track when game over was triggered
         self.SHUTDOWN_DELAY = 2.0  # 2 seconds delay before shutdown
         self.reset()
@@ -149,18 +150,28 @@ class GameState:
                 last_active_player = player
             self.stats.update_stats(player.id, player.active)
         
-        # Check if game is over (only one player left or no players)
+        # Check if game is over (only one player left, no players, or time limit reached)
         # Only check after the game start delay has passed
         current_time = time.time()
         if (self.game_start_time is not None and 
             current_time - self.game_start_time >= self.GAME_START_DELAY and
-            len(self.players) > 0 and active_players <= 1):
-            self.game_over = True
-            self.game_over_time = current_time  # Record when game over was triggered
-            if last_active_player:
-                self.stats.set_last_surviving(last_active_player.id)
-            self.stats.export_stats()  # Export statistics when game ends
-            print("Game Over! Statistics have been exported.")
+            len(self.players) > 0):
+            
+            time_limit_reached = current_time - self.game_start_time >= self.GAME_TIME_LIMIT
+            only_one_player_left = active_players <= 1
+            
+            if time_limit_reached or only_one_player_left:
+                self.game_over = True
+                self.game_over_time = current_time  # Record when game over was triggered
+                
+                # Only set last survivor if game ended due to having only one player
+                if only_one_player_left and last_active_player:
+                    self.stats.set_last_surviving(last_active_player.id)
+                    
+                self.stats.export_stats()  # Export statistics when game ends
+                print("Game Over! Statistics have been exported.")
+                if time_limit_reached:
+                    print("Time limit of 2 minutes reached!")
         
         # Update flash effect
         if self.is_flashing and time.time() - self.flash_start_time > FLASH_DURATION:
