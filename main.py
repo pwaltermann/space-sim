@@ -54,10 +54,10 @@ class Game:
         finally:
             pygame.quit()
 
-def run_api():
+def run_api(game_instance):
     """Run the FastAPI server."""
     try:
-        app = create_app(game.game_state)
+        app = create_app(game_instance.game_state)
         uvicorn.run(app, host="127.0.0.1", port=8000)
     except Exception as e:
         print(f"Error in API server: {e}")
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     game = Game()
     
     # Start API server in a separate thread
-    api_thread = Thread(target=run_api, daemon=True)
+    api_thread = Thread(target=run_api, args=(game,), daemon=True)
     api_thread.start()
     
     # Run game loop
